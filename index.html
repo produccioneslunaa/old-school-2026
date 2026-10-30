@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OLD SCHOOL 2026 - Control de acceso</title>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<style>
+body {
+background: #111;
+color: white;
+font-family: Arial, sans-serif;
+text-align: center;
+padding: 20px;
+}
+.contenedor {
+max-width: 450px;
+margin: 30px auto;
+padding: 25px;
+background: #222;
+border-radius: 15px;
+}
+h1 { color: #e52323; }
+button {
+background: #e52323;
+color: white;
+border: none;
+padding: 15px 25px;
+border-radius: 8px;
+font-size: 17px;
+margin: 15px;
+}
+#lector { width: 100%; margin-top: 20px; }
+#estado { font-size: 18px; margin-top: 20px; }
+</style>
+</head>
+
+<body>
+<div class="contenedor">
+
+<h1>OLD SCHOOL 2026</h1>
+<h2>CONTROL DE ACCESO</h2>
+
+<p>Escanea el código QR de la entrada.</p>
+
+<div id="lector"></div>
+
+<button onclick="iniciarCamara()">ACTIVAR CÁMARA</button>
+
+<div id="estado">Esperando para escanear...</div>
+
+</div>
+
+<script>
+const URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbza_UiQ2072UdOI3Ki_2H7FnH7aHyWpFFJpdMIV7-PxWoo1nVdCJDTKmvoFgbvkdzYh/exec";
+
+let lector = null;
+let procesando = false;
+
+async function iniciarCamara() {
+if (lector) return;
+
+lector = new Html5Qrcode("lector");
+
+try {
+await lector.start(
+{ facingMode: "environment" },
+{ fps: 10, qrbox: 250 },
+async function(codigo) {
+if (procesando) return;
+
+procesando = true;
+
+document.getElementById("estado").innerHTML =
+"QR detectado. Abriendo validación...";
+
+try {
+await lector.stop();
+
+const direccion = new URL(codigo);
+const token = direccion.searchParams.get("token");
+
+if (!token) {
+throw new Error("Código QR no reconocido.");
+}
+
+window.location.href =
+URL_APPS_SCRIPT + "?token=" + encodeURIComponent(token);
+
+} catch (error) {
+document.getElementById("estado").innerHTML =
+"Código QR no válido.";
+
+procesando = false;
+lector = null;
+}
+}
+);
+} catch (error) {
+document.getElementById("estado").innerHTML =
+"No se pudo activar la cámara. Revisa los permisos.";
+lector = null;
+}
+}
+</script>
+
+</body>
+</html>
