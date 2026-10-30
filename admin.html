@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lector QR · OLD SCHOOL 2026</title>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#090b14;color:#fff;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;padding:20px}.card{width:min(100%,520px);background:#151a2b;border:1px solid #343b59;border-radius:20px;padding:24px;box-shadow:0 18px 60px #0008}h1{margin:0 0 8px;text-align:center;font-size:25px;color:#fff}p{color:#c9cee0;text-align:center;line-height:1.45}#reader{width:100%;margin:18px auto;border-radius:12px;overflow:hidden;background:#080a10}.btn{display:block;width:100%;border:0;border-radius:12px;padding:15px;margin-top:12px;font-weight:700;font-size:16px;cursor:pointer;background:#e11d48;color:#fff}.btn.secondary{background:#303954}.status{padding:12px;border-radius:10px;background:#0c1020;color:#dce3ff;text-align:center;overflow-wrap:anywhere;min-height:44px}.small{font-size:12px;color:#aab2ca}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>OLD SCHOOL 2026</h1>
+    <p>Lector de entradas QR</p>
+    <div id="reader"></div>
+    <div id="status" class="status">Preparando cámara…</div>
+    <button id="start" class="btn" type="button">ACTIVAR CÁMARA</button>
+    <button id="close" class="btn secondary" type="button">CERRAR LECTOR</button>
+    <p class="small">Permite el acceso a la cámara cuando el navegador lo solicite. Usa la cámara trasera si está disponible.</p>
+  </main>
+<script>
+(function(){
+  const statusEl=document.getElementById('status');
+  let scanner=null, running=false, sent=false;
+  function status(msg){statusEl.textContent=msg;}
+  function sendToPanel(token){
+    if(sent) return; sent=true;
+    status('QR leído. Enviando al panel de administración…');
+    if(window.opener && !window.opener.closed){
+      window.opener.postMessage({type:'OLD_SCHOOL_QR_SCANNED',token:String(token)},'*');
+      status('Código enviado al panel. Puedes cerrar esta ventana.');
+      setTimeout(()=>window.close(),900);
+    } else {
+      status('Código leído: '+token+'. Esta página se abrió sin el panel; vuelve al panel y abre el lector desde su botón.');
+      sent=false;
+    }
+  }
+  async function start(){
+    sent=false;
+    if(!window.isSecureContext){status('Esta página necesita abrirse mediante HTTPS.');return;}
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){status('Este navegador no permite acceder a la cámara.');return;}
+    try{
+      status('Solicitando permiso de cámara…');
+      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+      stream.getTracks().forEach(t=>t.stop());
+      if(!scanner) scanner=new Html5Qrcode('reader');
+      await scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:240,height:240}},async decoded=>{
+        if(sent)return;
+        try{await scanner.stop();running=false;}catch(e){}
+        sendToPanel(decoded);
+      },()=>{});
+      running=true;status('Cámara activa. Enfoca el código QR.');
+    }catch(err){
+      const name=err && err.name ? err.name : 'Error';
+      status(name+': '+(err && err.message ? err.message : 'No se pudo iniciar la cámara.')+' Revisa el permiso de cámara de GitHub Pages.');
+    }
+  }
+  async function stop(){if(scanner && running){try{await scanner.stop();}catch(e){} running=false;}status('Lector detenido.');}
+  document.getElementById('start').addEventListener('click',start);
+  document.getElementById('close').addEventListener('click',async()=>{await stop();window.close();});
+  window.addEventListener('beforeunload',()=>{if(scanner && running) scanner.stop().catch(()=>{});});
+  status('Pulsa “ACTIVAR CÁMARA” para comenzar.');
+})();
+</script>
+</body>
+</html>
