@@ -30,7 +30,7 @@
     if(window.opener && !window.opener.closed){
       window.opener.postMessage({type:'OLD_SCHOOL_QR_SCANNED',token:String(token)},'*');
       status('Código enviado al panel. Puedes cerrar esta ventana.');
-      setTimeout(()=>window.close(),900);
+      setTimeout(()=>window.close(),5000);
     } else {
       status('Código leído: '+token+'. Esta página se abrió sin el panel; vuelve al panel y abre el lector desde su botón.');
       sent=false;
